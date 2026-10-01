@@ -1,0 +1,83 @@
+{
+  "executedAt": "2026-10-01T17:27:46.637Z",
+  "totalScenarios": 12,
+  "passCount": 12,
+  "allPass": true,
+  "unhandledErrors": [],
+  "consoleLogsCount": 12,
+  "mobileOverflowDetected": false,
+  "scenarios": [
+    {
+      "id": 1,
+      "name": "Cliente homônimo",
+      "pass": true,
+      "note": "Operador selecionou CL-DEMO-021 (Salão Presencial (Consolação / SP) — Documento Verificado) sem qualquer fusão de registros."
+    },
+    {
+      "id": 2,
+      "name": "Continuar caso existente",
+      "pass": true,
+      "note": "Caso ativo AT-DEMO-021 mantido sem duplicação silenciosa."
+    },
+    {
+      "id": 3,
+      "name": "Feedback público + nota interna",
+      "pass": true,
+      "note": "FB-DEMO-008 isola categoricamente relato público de nota interna restrita da equipe."
+    },
+    {
+      "id": 4,
+      "name": "Preparar resposta pública",
+      "pass": true,
+      "note": "Prévia de resposta pública identifica destino/canal e está completamente limpa de dados privados."
+    },
+    {
+      "id": 5,
+      "name": "Recuperação separada da comunicação",
+      "pass": true,
+      "note": "CommunicationIntent marcada como enviada sem alterar indevidamente o estado da RecoveryAction (permanece em execução)."
+    },
+    {
+      "id": 6,
+      "name": "Compensação com autoridade insuficiente",
+      "pass": true,
+      "note": "Proposta de compensação (R$ 120.00) excede a alçada do operador (R$ 30.00) e foi bloqueada sem gerar efeito financeiro."
+    },
+    {
+      "id": 7,
+      "name": "Resultado incerto de mensagem",
+      "pass": true,
+      "note": "Disparo entrou em \"resultado incerto\"; reenvio cego bloqueado até reconciliação com o provedor."
+    },
+    {
+      "id": 8,
+      "name": "Conversa vira oportunidade",
+      "pass": true,
+      "note": "Oportunidade OPP-DEMO-006 referencia CONV-DEMO-031 sem duplicar ou criar verdade paralela de histórico."
+    },
+    {
+      "id": 9,
+      "name": "Enviar EventProposal v1",
+      "pass": true,
+      "note": "Proposta v1.0 enviada com escopo, validade e termos explícitos; capacidade, produção e pagamento continuam pendentes."
+    },
+    {
+      "id": 10,
+      "name": "Cliente aceita v1",
+      "pass": true,
+      "note": "Aceite ACC-EVT-001 vinculado unicamente à v1.0; capacidade permanece pendente, sem liberação de produção ou registro de pagamento."
+    },
+    {
+      "id": 11,
+      "name": "Capacidade indisponível FND-11",
+      "pass": true,
+      "note": "FND-11 retornou conflito; proposta v1 e aceite ACC-EVT-001 permanecem preservados no histórico; exige nova decisão/renegociação."
+    },
+    {
+      "id": 12,
+      "name": "EventProposal v2 alteração material",
+      "pass": true,
+      "note": "Proposta v2.0 gerada para nova data/escopo; v1 e seu aceite ACC-EVT-001 permanecem históricos; v2 exige novo aceite independente."
+    }
+  ]
+}
