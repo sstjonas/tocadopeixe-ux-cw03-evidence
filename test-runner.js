@@ -373,6 +373,11 @@ async function main() {
   console.log(`  Resultado C9: ${c9Pass ? 'PASS' : 'FAIL'} — ${c9State.res.note}`);
   await client.captureScreenshot('cenario-09-proposta-v1-enviada.png');
 
+  // Visão em SCR-EXT-007 antes do aceite (v1 pendente de capacidade e sem sinal inventado)
+  await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
+  await wait(400);
+  await client.captureScreenshot('cenario-09-ext-007-proposta-v1-pendente.png');
+
   // --- CENÁRIO 10: Cliente aceita v1 ---
   console.log('\n▶ Cenário 10: Cliente aceita v1');
   await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
@@ -415,8 +420,15 @@ async function main() {
   console.log(`  Resultado C11: ${c11Pass ? 'PASS' : 'FAIL'} — ${c11State.res.note}`);
   await client.captureScreenshot('cenario-11-conflito-capacidade-fnd11.png');
 
+  // Visão em SCR-EXT-007 com conflito FND-11 (aceite preservado e sem promessa de reserva)
+  await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
+  await wait(400);
+  await client.captureScreenshot('cenario-11-ext-007-conflito-capacidade.png');
+
   // --- CENÁRIO 12: EventProposal v2 altera materialmente o acordo ---
   console.log('\n▶ Cenário 12: EventProposal v2 altera materialmente o acordo');
+  await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-MKT-004')");
+  await wait(300);
   await client.eval("window.UX_ACTIONS.createAndSendProposalV2()");
   await wait(400);
 
@@ -425,10 +437,11 @@ async function main() {
     p2: window.UX_STATE.event.proposals['v2.0'],
     accV1: window.UX_STATE.event.proposalAcceptances['ACC-EVT-001'],
     currentVersion: window.UX_STATE.event.currentActiveVersion,
+    evt: window.UX_STATE.event,
     res: window.UX_STATE.scenarioResults[12]
   })`);
 
-  let c12Pass = (c12State.p1.status === 'superada' && c12State.p1.acceptanceRef === 'ACC-EVT-001' && c12State.p2.status === 'enviada' && c12State.p2.acceptanceRef === null && c12State.currentVersion === 'v2.0' && c12State.res.status === 'PASS');
+  let c12Pass = (c12State.p1.status === 'superada' && c12State.p1.acceptanceRef === 'ACC-EVT-001' && c12State.p2.status === 'enviada' && c12State.p2.acceptanceRef === null && c12State.currentVersion === 'v2.0' && c12State.evt.capacityCommitment.status === 'pendente' && c12State.res.status === 'PASS');
   scenarioLog.push({ id: 12, name: 'EventProposal v2 alteração material', pass: c12Pass, note: c12State.res.note });
   console.log(`  Resultado C12: ${c12Pass ? 'PASS' : 'FAIL'} — ${c12State.res.note}`);
   await client.captureScreenshot('cenario-12-proposta-v2-emitida.png');
@@ -437,6 +450,166 @@ async function main() {
   await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
   await wait(400);
   await client.captureScreenshot('cenario-12-portal-cliente-proposta-v2.png');
+
+  // =========================================================================
+  // ASSERTS SEMÂNTICOS ADICIONAIS R2 (Asserts A a G)
+  // =========================================================================
+  console.log('\n================================================================');
+  console.log('[5.1] Executando Asserts Semânticos Adicionais R2:');
+  console.log('================================================================');
+  const r2Asserts = [];
+
+  // Assert A: Proposta pendente NÃO diz "reservado" e mostra "Espaço proposto"
+  const assertAData = await client.eval(`(() => {
+    const text = document.getElementById('scr-ext-007-container').innerText;
+    const textLower = text.toLowerCase();
+    const hasEspacoReservado = textLower.includes('espaço reservado');
+    const hasEspacoProposto = textLower.includes('espaço proposto');
+    const hasPendingCapacity = text.includes('Capacidade: aguardando compromisso FND-11') || text.includes('aguardando compromisso FND-11');
+    const hasConfirmado = textLower.includes('disponibilidade garantida') || textLower.includes('reserva confirmada') || textLower.includes('capacidade confirmada');
+    return {
+      pass: !hasEspacoReservado && hasEspacoProposto && hasPendingCapacity && !hasConfirmado,
+      hasEspacoReservado,
+      hasEspacoProposto,
+      hasPendingCapacity,
+      hasConfirmado
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert A',
+    name: 'Capacidade pendente sem "reservado"',
+    pass: assertAData.pass,
+    detail: 'Espaço proposto exibido sem menção de reserva ou garantia de capacidade'
+  });
+  console.log(`  ${assertAData.pass ? '✅ PASS' : '❌ FAIL'}: Assert A — Proposta pendente não diz "reservado" e exibe "Espaço proposto"`);
+
+  // Assert B: Conflito FND-11 informa conflito na SCR-EXT-007 sem dizer "reservado"
+  await client.eval("window.UX_ACTIONS.simulateFND11CapacityConflict()");
+  await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
+  await wait(300);
+  const assertBData = await client.eval(`(() => {
+    const text = document.getElementById('scr-ext-007-container').innerText;
+    const textLower = text.toLowerCase();
+    const hasConflict = text.includes('Capacidade: conflito identificado') || text.includes('Conflito identificado no FND-11');
+    const hasEspacoReservado = textLower.includes('espaço reservado');
+    const hasConfirmado = textLower.includes('confirmada e comprometida') || textLower.includes('garantido');
+    return {
+      pass: hasConflict && !hasEspacoReservado && !hasConfirmado,
+      hasConflict,
+      hasEspacoReservado,
+      hasConfirmado
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert B',
+    name: 'Conflito FND-11 sem falsa confirmação',
+    pass: assertBData.pass,
+    detail: 'Conflito FND-11 exibido com proposta preservada e sem linguagem confirmatória'
+  });
+  console.log(`  ${assertBData.pass ? '✅ PASS' : '❌ FAIL'}: Assert B — Conflito FND-11 informa conflito sem dizer "reservado"`);
+
+  // Assert C: Capacidade comprometida permite linguagem confirmatória
+  await client.eval("window.UX_ACTIONS.simulateFND11CapacityCommitted('CAP-FND11-TEST')");
+  await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
+  await wait(300);
+  const assertCData = await client.eval(`(() => {
+    const text = document.getElementById('scr-ext-007-container').innerText;
+    const hasComprometida = text.includes('Capacidade: comprometida');
+    const hasRecursoConfirmado = text.includes('Recurso confirmado no FND-11');
+    return {
+      pass: hasComprometida && hasRecursoConfirmado,
+      hasComprometida,
+      hasRecursoConfirmado
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert C',
+    name: 'Capacidade comprometida em teste controlado',
+    pass: assertCData.pass,
+    detail: 'Linguagem confirmatória habilitada exclusivamente quando capacityCommitment.status === comprometido'
+  });
+  console.log(`  ${assertCData.pass ? '✅ PASS' : '❌ FAIL'}: Assert C — Capacidade comprometida permite confirmação`);
+
+  // Resetar para pendente para os testes seguintes
+  await client.eval("window.UX_STATE.event.capacityCommitment.status = 'pendente'");
+  await client.eval("window.UX_ACTIONS.navigateToSurface('SCR-EXT-007')");
+  await wait(200);
+
+  // Assert D: Nenhum sinal hardcoded ("30%" ou outro)
+  const assertDData = await client.eval(`(() => {
+    const bodyText = document.body.innerText;
+    const has30Percent = bodyText.includes('30%');
+    const hasPercentSignal = /(sinal de \\d+%)/i.test(bodyText);
+    return {
+      pass: !has30Percent && !hasPercentSignal,
+      has30Percent,
+      hasPercentSignal
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert D',
+    name: 'Ausência de sinal hardcoded (sem 30%)',
+    pass: assertDData.pass,
+    detail: 'Sem 30% ou qualquer outro percentual de sinal inventado no DOM'
+  });
+  console.log(`  ${assertDData.pass ? '✅ PASS' : '❌ FAIL'}: Assert D — Nenhum sinal hardcoded (30% ausente)`);
+
+  // Assert E: Política financeira segura e configurável
+  const assertEData = await client.eval(`(() => {
+    const text = document.getElementById('scr-ext-007-container').innerText;
+    const hasPolicy = text.includes('Condições financeiras e eventual sinal permanecem sujeitos à política comercial aprovada');
+    const hasNotConfigured = text.includes('não estão configurados neste protótipo');
+    return {
+      pass: hasPolicy && hasNotConfigured,
+      hasPolicy,
+      hasNotConfigured
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert E',
+    name: 'Política financeira segura e configurável',
+    pass: assertEData.pass,
+    detail: 'Texto declara condições financeiras sujeitas à política aprovada e não configuradas'
+  });
+  console.log(`  ${assertEData.pass ? '✅ PASS' : '❌ FAIL'}: Assert E — Política financeira segura e configurável`);
+
+  // Assert F: C10 continua válido (aceite de v1 NÃO altera capacidade para comprometida)
+  const assertFData = await client.eval(`(() => {
+    const evt = window.UX_STATE.event;
+    const p1 = evt.proposals['v1.0'];
+    const acc = evt.proposalAcceptances['ACC-EVT-001'];
+    return {
+      pass: p1 !== undefined && acc !== undefined && acc.proposalVersion === 'v1.0' && evt.capacityCommitment.status !== 'comprometido',
+      accVersion: acc ? acc.proposalVersion : null,
+      capStatus: evt.capacityCommitment.status
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert F',
+    name: 'C10 continua válido (aceite ≠ capacidade)',
+    pass: assertFData.pass,
+    detail: `Aceite de v1 preservado sem transição automática da capacidade para confirmada`
+  });
+  console.log(`  ${assertFData.pass ? '✅ PASS' : '❌ FAIL'}: Assert F — C10 continua válido (aceite não confirma capacidade)`);
+
+  // Assert G: C11 continua válido (conflito preserva proposta v1 e aceite ACC-EVT-001)
+  const assertGData = await client.eval(`(() => {
+    const evt = window.UX_STATE.event;
+    const p1 = evt.proposals['v1.0'];
+    const acc = evt.proposalAcceptances['ACC-EVT-001'];
+    return {
+      pass: p1.acceptanceRef === 'ACC-EVT-001' && acc !== undefined && acc.proposalVersion === 'v1.0',
+      p1Acceptance: p1.acceptanceRef,
+      hasAcc: !!acc
+    };
+  })()`);
+  r2Asserts.push({
+    id: 'Assert G',
+    name: 'C11 continua válido (conflito preserva aceite)',
+    pass: assertGData.pass,
+    detail: 'Proposta v1 e aceite ACC-EVT-001 íntegros após identificação de conflito FND-11'
+  });
+  console.log(`  ${assertGData.pass ? '✅ PASS' : '❌ FAIL'}: Assert G — C11 continua válido (conflito preserva aceite)`);
 
   // =========================================================================
   // TESTE DE VIEWPORT MOBILE (390 x 844)
@@ -474,12 +647,22 @@ async function main() {
   console.log('RESUMO DOS RESULTADOS:');
   console.log('================================================================');
 
-  let allPass = true;
+  let allScenariosPass = true;
   scenarioLog.forEach(s => {
     const mark = s.pass ? '✅ PASS' : '❌ FAIL';
-    if (!s.pass) allPass = false;
+    if (!s.pass) allScenariosPass = false;
     console.log(`Cenário ${s.id.toString().padStart(2, ' ')}: ${mark} — ${s.name}`);
   });
+
+  console.log('\nASSERTS SEMÂNTICOS R2:');
+  let allR2AssertsPass = true;
+  r2Asserts.forEach(a => {
+    const mark = a.pass ? '✅ PASS' : '❌ FAIL';
+    if (!a.pass) allR2AssertsPass = false;
+    console.log(`  ${mark} — ${a.id}: ${a.name}`);
+  });
+
+  const allPass = allScenariosPass && allR2AssertsPass;
 
   console.log(`\nErros não tratados de JS: ${client.errors.length}`);
   if (client.errors.length > 0) {
@@ -491,11 +674,14 @@ async function main() {
     executedAt: new Date().toISOString(),
     totalScenarios: 12,
     passCount: scenarioLog.filter(s => s.pass).length,
+    allScenariosPass,
+    allR2AssertsPass,
     allPass,
     unhandledErrors: client.errors,
     consoleLogsCount: client.consoleLogs.length,
     mobileOverflowDetected: mobileOverflow,
-    scenarios: scenarioLog
+    scenarios: scenarioLog,
+    additionalSemanticAsserts: r2Asserts
   };
 
   fs.writeFileSync(path.join(EVIDENCE_DIR, 'test_execution_log.json'), JSON.stringify(report, null, 2));

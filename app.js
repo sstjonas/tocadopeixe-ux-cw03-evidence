@@ -200,7 +200,7 @@
             menuScope: 'Menu Degustação Frutos do Mar + Bebidas Não Alcoólicas',
             totalValue: 7200.00,
             validityDate: '10/10/2026',
-            terms: 'O aceite comercial formaliza os parâmetros acordados e precede o compromisso definitivo de capacidade no FND-11. Sinal de 30% faturado após confirmação de agenda.',
+            terms: 'O aceite comercial formaliza os parâmetros acordados e precede o compromisso definitivo de capacidade no FND-11. Condições financeiras e eventual sinal permanecem sujeitos à política comercial aprovada e não estão configurados neste protótipo.',
             status: 'rascunho', // 'rascunho', 'enviada', 'aceita', 'superada'
             sentAt: null,
             acceptanceRef: null
@@ -214,7 +214,7 @@
             menuScope: 'Menu Degustação Frutos do Mar + Seleção de Vinhos da Casa',
             totalValue: 6840.00,
             validityDate: '18/10/2026',
-            terms: 'Proposta v2.0 gerada após indisponibilidade de agenda na data anterior. Requer novo e inequívoco aceite comercial.',
+            terms: 'Proposta v2.0 gerada após indisponibilidade de agenda na data anterior. Requer novo e inequívoco aceite comercial. Condições financeiras e eventual sinal permanecem sujeitos à política comercial aprovada e não estão configurados neste protótipo.',
             status: 'nao_criada', // 'nao_criada', 'rascunho', 'enviada', 'aceita'
             sentAt: null,
             acceptanceRef: null
@@ -502,6 +502,12 @@
       p2.status = 'enviada';
       p2.sentAt = '01/10/2026 14:20';
       state.event.currentActiveVersion = 'v2.0';
+      // Nova proposta v2 tem capacidade pendente de compromisso no FND-11
+      state.event.capacityCommitment = {
+        status: 'pendente',
+        fnd11Ref: null,
+        conflictMessage: null
+      };
 
       // Validações fundamentais:
       // 1. Aceite de v1 NÃO aceita v2!
@@ -514,6 +520,13 @@
       } else {
         actions.recordScenarioResult(12, 'FAIL', 'Aceite da v1 autorizou silenciosamente a v2.');
       }
+      notify();
+    },
+
+    simulateFND11CapacityCommitted(commitmentRef = 'CAP-FND11-9981') {
+      state.event.capacityCommitment.status = 'comprometido';
+      state.event.capacityCommitment.fnd11Ref = commitmentRef;
+      state.event.capacityCommitment.conflictMessage = null;
       notify();
     },
 
@@ -1032,9 +1045,9 @@
         <div class="dimension-status-group">
           ${renderDimensionStatus('Versão Ativa', activeVersion, 'info')}
           ${renderDimensionStatus('Proposta v1.0', p1.status === 'aceita' ? 'Aceita (ACC-EVT-001)' : (p1.status === 'superada' ? 'Superada por v2.0' : p1.status), p1.status === 'aceita' ? 'success' : (p1.status === 'superada' ? 'neutral' : 'warning'))}
-          ${renderDimensionStatus('Capacidade FND-11', evt.capacityCommitment.status === 'em_conflito' ? 'Conflito de Recurso Detectado' : 'Pendente de Compromisso', evt.capacityCommitment.status === 'em_conflito' ? 'error' : 'warning')}
-          ${renderDimensionStatus('Produção Cozinha', evt.productionStatus === 'bloqueada' ? 'Bloqueada (Aguardando Sinal & Capacidade)' : 'Liberada', 'error')}
-          ${renderDimensionStatus('Financeiro', evt.paymentStatus === 'pendente' ? 'Sinal Pendente (R$ 0,00)' : 'Sinal Confirmado', 'warning')}
+          ${renderDimensionStatus('Capacidade FND-11', evt.capacityCommitment.status === 'em_conflito' ? 'Conflito de Recurso Detectado' : (evt.capacityCommitment.status === 'comprometido' ? 'Comprometida no FND-11' : 'Pendente de Compromisso'), evt.capacityCommitment.status === 'em_conflito' ? 'error' : (evt.capacityCommitment.status === 'comprometido' ? 'success' : 'warning'))}
+          ${renderDimensionStatus('Produção Cozinha', evt.productionStatus === 'bloqueada' ? 'Bloqueada (Aguardando Capacidade & Acordo)' : 'Liberada', 'error')}
+          ${renderDimensionStatus('Financeiro', evt.paymentStatus === 'pendente' ? 'Condição Pendente (R$ 0,00)' : 'Faturado', 'warning')}
         </div>
 
         ${evt.capacityCommitment.status === 'em_conflito' ? `
@@ -1120,6 +1133,23 @@
     const currentProp = evt.proposals[activeVersion];
     const isV1Accepted = evt.proposals['v1.0'].status === 'aceita';
 
+    let capacityBadge = '';
+    let capacityMetaNote = '';
+    let capacityTermsNote = '';
+    if (evt.capacityCommitment.status === 'comprometido') {
+      capacityBadge = '<span class="badge badge-green" id="badge-capacity">Capacidade: comprometida</span>';
+      capacityMetaNote = '✓ Recurso confirmado no FND-11';
+      capacityTermsNote = '<span style="color: var(--status-success-text); font-weight: 600;">✓ Comprometida / Confirmada no FND-11</span>';
+    } else if (evt.capacityCommitment.status === 'em_conflito') {
+      capacityBadge = '<span class="badge badge-red" id="badge-capacity">Capacidade: conflito identificado</span>';
+      capacityMetaNote = '⚠️ Conflito no FND-11: recurso não disponível';
+      capacityTermsNote = '<span style="color: var(--status-error-text); font-weight: 600;">⚠️ Conflito identificado no FND-11 (recurso indisponível)</span>';
+    } else {
+      capacityBadge = '<span class="badge badge-yellow" id="badge-capacity">Capacidade: aguardando compromisso FND-11</span>';
+      capacityMetaNote = '⏳ Capacidade: aguardando compromisso FND-11';
+      capacityTermsNote = '<span style="color: var(--color-ink-muted); font-weight: 600;">⏳ Aguardando compromisso FND-11 (capacidade pendente)</span>';
+    }
+
     return `
       <div class="surface-viewport" style="background-color: #FAFAFC;" id="scr-ext-007-container">
         <div class="external-portal-container">
@@ -1129,11 +1159,14 @@
           </div>
 
           <div style="margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
               <h2 style="font-family: var(--font-family-title); font-size: 20px; font-weight: 600; color: var(--color-ink);">
                 Proposta Comercial de Evento
               </h2>
-              <span class="badge badge-blue">Versão ${currentProp.version}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge badge-blue">Versão ${currentProp.version}</span>
+                ${capacityBadge}
+              </div>
             </div>
             <p style="color: var(--color-ink-muted); font-size: 13px; margin-top: 4px;">
               Proposta preparada para <strong>Carlos Eduardo Silva</strong> · Ref: <code>${evt.id}</code>
@@ -1154,12 +1187,18 @@
               <div class="meta-value">${currentProp.guests} pessoas</div>
             </div>
             <div class="proposal-meta-box">
-              <div class="meta-label">Espaço Reservado</div>
+              <div class="meta-label">Espaço proposto</div>
               <div class="meta-value">${currentProp.resource}</div>
+              <div style="font-size: 11px; margin-top: 4px; color: var(--color-ink-muted);" id="ext-resource-status-note">
+                ${capacityMetaNote}
+              </div>
             </div>
             <div class="proposal-meta-box">
               <div class="meta-label">Investimento Total Previsto</div>
               <div class="meta-value num">R$ ${currentProp.totalValue.toFixed(2)}</div>
+              <div style="font-size: 11px; margin-top: 4px; color: var(--color-ink-muted);">
+                Condições sujeitas a política comercial
+              </div>
             </div>
           </div>
 
@@ -1174,8 +1213,12 @@
             <span class="callout-icon">📋</span>
             <div>
               <div class="callout-title">Termos de Validade e Capacidade</div>
-              ${currentProp.terms}<br/>
-              <strong>Validade da proposta:</strong> até ${currentProp.validityDate}.
+              <p style="margin: 4px 0 8px 0;">${currentProp.terms}</p>
+              <div style="font-size: 12px; color: var(--color-ink-secondary); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--color-border);">
+                <strong>Status da Capacidade (FND-11):</strong> ${capacityTermsNote}<br/>
+                <strong>Condição Financeira:</strong> <span style="color: var(--color-ink-muted);">Condições financeiras e eventual sinal permanecem sujeitos à política comercial aprovada e não estão configurados neste protótipo.</span><br/>
+                <strong>Validade da proposta:</strong> até ${currentProp.validityDate}.
+              </div>
             </div>
           </div>
 
@@ -1186,16 +1229,23 @@
                 <div style="color: var(--status-success-text); font-weight: 600; display: flex; align-items: center; gap: 6px;">
                   <span>✓</span> Proposta v1.0 Aceita em 01/10/2026 (Protocolo: ACC-EVT-001)
                 </div>
-                <div style="font-size: 12px; color: var(--color-ink-muted);">
-                  Aguardando verificação de capacidade FND-11 pelo restaurante.
+                <div style="font-size: 12px; color: ${evt.capacityCommitment.status === 'em_conflito' ? 'var(--status-error-text)' : 'var(--color-ink-muted)'};">
+                  ${evt.capacityCommitment.status === 'em_conflito' ?
+                    '⚠️ Conflito identificado no FND-11: recurso não disponível na data. Proposta e aceite preservados no histórico; aguardando nova decisão/renegociação.' :
+                    (evt.capacityCommitment.status === 'comprometido' ?
+                      '✓ Capacidade física confirmada e comprometida no FND-11.' :
+                      'Capacidade física pendente: aguardando compromisso FND-11 pelo restaurante.')}
                 </div>
               ` : (activeVersion === 'v2.0' ? `
                 <div style="color: var(--status-warning-text); font-weight: 600;">
-                  ⚠️ Versão v2.0 com alteração material de data/convidados aguarda nova confirmação.
+                  ⚠️ Versão v2.0 com alteração material de data/convidados requer novo aceite comercial.
+                </div>
+                <div style="font-size: 12px; color: var(--color-ink-muted);">
+                  Capacidade física do Salão Deck Exclusivo: aguardando compromisso FND-11 após aceite.
                 </div>
               ` : `
                 <div style="font-size: 12px; color: var(--color-ink-muted);">
-                  Ao aceitar, você concorda com o escopo e termos comerciais da proposta.
+                  Ao aceitar, você concorda com o escopo e termos comerciais da proposta. O compromisso de capacidade física depende de compromisso formal no FND-11.
                 </div>
               `)}
             </div>

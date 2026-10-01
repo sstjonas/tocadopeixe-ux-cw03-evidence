@@ -1,10 +1,12 @@
 {
-  "executedAt": "2026-10-01T17:27:46.637Z",
+  "executedAt": "2026-10-01T17:48:54.697Z",
   "totalScenarios": 12,
   "passCount": 12,
+  "allScenariosPass": true,
+  "allR2AssertsPass": true,
   "allPass": true,
   "unhandledErrors": [],
-  "consoleLogsCount": 12,
+  "consoleLogsCount": 13,
   "mobileOverflowDetected": false,
   "scenarios": [
     {
@@ -78,6 +80,50 @@
       "name": "EventProposal v2 alteração material",
       "pass": true,
       "note": "Proposta v2.0 gerada para nova data/escopo; v1 e seu aceite ACC-EVT-001 permanecem históricos; v2 exige novo aceite independente."
+    }
+  ],
+  "additionalSemanticAsserts": [
+    {
+      "id": "Assert A",
+      "name": "Capacidade pendente sem \"reservado\"",
+      "pass": true,
+      "detail": "Espaço proposto exibido sem menção de reserva ou garantia de capacidade"
+    },
+    {
+      "id": "Assert B",
+      "name": "Conflito FND-11 sem falsa confirmação",
+      "pass": true,
+      "detail": "Conflito FND-11 exibido com proposta preservada e sem linguagem confirmatória"
+    },
+    {
+      "id": "Assert C",
+      "name": "Capacidade comprometida em teste controlado",
+      "pass": true,
+      "detail": "Linguagem confirmatória habilitada exclusivamente quando capacityCommitment.status === comprometido"
+    },
+    {
+      "id": "Assert D",
+      "name": "Ausência de sinal hardcoded (sem 30%)",
+      "pass": true,
+      "detail": "Sem 30% ou qualquer outro percentual de sinal inventado no DOM"
+    },
+    {
+      "id": "Assert E",
+      "name": "Política financeira segura e configurável",
+      "pass": true,
+      "detail": "Texto declara condições financeiras sujeitas à política aprovada e não configuradas"
+    },
+    {
+      "id": "Assert F",
+      "name": "C10 continua válido (aceite ≠ capacidade)",
+      "pass": true,
+      "detail": "Aceite de v1 preservado sem transição automática da capacidade para confirmada"
+    },
+    {
+      "id": "Assert G",
+      "name": "C11 continua válido (conflito preserva aceite)",
+      "pass": true,
+      "detail": "Proposta v1 e aceite ACC-EVT-001 íntegros após identificação de conflito FND-11"
     }
   ]
 }
